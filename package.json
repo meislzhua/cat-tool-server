@@ -1,0 +1,21 @@
+{
+  "name": "cat-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@koa/cors": "^3.1.0",
+    "@koa/router": "^10.1.1",
+    "@lvgithub/stick": "^3.1.11",
+    "koa": "^2.13.4",
+    "koa-body": "^4.2.0",
+    "leancloud-storage": "^4.12.0",
+    "lodash": "^4.17.21"
+  }
+}
