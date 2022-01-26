@@ -15,14 +15,14 @@ const checkToken = async (ctx, next) => {
     ctx.checkToken = await CatServer.checkToken(token)
     next();
 }
-
+let MaxCacheFrame = 2;
 //请求图片流处理
 router.get("/img", checkToken, ctx => {
     if (!ctx.checkToken) return;
     let s = new require('stream').Duplex();
     s._read = () => null;
     s._write = function (chunk, enc, done) {
-        this.push(chunk);
+        if (chunk.length * MaxCacheFrame > this.readableLength) this.push(chunk);
         done();
     };
     CatNetwork.imageSteam.pipe(s);
