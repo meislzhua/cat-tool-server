@@ -2,6 +2,8 @@ const AV = require('leancloud-storage')
 const Koa = require('koa');
 const Router = require('@koa/router');
 const cors = require('@koa/cors');
+const sharp = require('sharp');
+
 const koaBody = require('koa-body');
 const CatNetwork = require('./CatNetwork');
 const _ = require('lodash');
@@ -21,8 +23,12 @@ router.get("/img", checkToken, ctx => {
     if (!ctx.checkToken) return;
     let s = new require('stream').Duplex();
     s._read = () => null;
-    s._write = function (chunk, enc, done) {
-        if (chunk.length * MaxCacheFrame > this.readableLength) this.push(chunk);
+    s._write = async function (chunk, enc, done) {
+        if (chunk.length * MaxCacheFrame > this.readableLength) this.push(
+            await sharp(chunk)
+                .avif()
+                .toBuffer()
+        );
         done();
     };
     CatNetwork.imageSteam.pipe(s);
