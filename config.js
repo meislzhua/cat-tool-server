@@ -13,6 +13,12 @@ module.exports = {
     MESSAGE_TYPE_JSON: 0,  // 传输数据类型:JSON
     MESSAGE_TYPE_JPEG: 1,  // 传输数据类型:JPEG
 
-    BOUNDARY: "cat123456789" //传输图片流用的BOUNDARY
+    BOUNDARY: "cat123456789", //传输图片流用的BOUNDARY
+
+
+    rt: {    //实时动态配置
+        MaxCacheFrame: 2,    //网络缓存帧数
+        format: "avif",    //图片传输格式
+    }
 
 }

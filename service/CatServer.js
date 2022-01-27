@@ -17,18 +17,21 @@ const checkToken = async (ctx, next) => {
     ctx.checkToken = await CatServer.checkToken(token)
     next();
 }
-let MaxCacheFrame = 2;
 //请求图片流处理
 router.get("/img", checkToken, ctx => {
+
+
     if (!ctx.checkToken) return;
     let s = new require('stream').Duplex();
     s._read = () => null;
     s._write = async function (chunk, enc, done) {
-        if (chunk.length * MaxCacheFrame > this.readableLength) this.push(
-            await sharp(chunk)
-                .avif()
-                .toBuffer()
-        );
+        if (chunk.length * config.rt.MaxCacheFrame > this.readableLength) {
+            const image = sharp(chunk).toFormat(config.rt.format);
+            this.push(Buffer.concat([
+                new Buffer(`--${config.BOUNDARY}\r\nContent-Type: image/${(await image.metadata()).format}\r\n\r\n`),
+                await image.toBuffer()
+            ]))
+        }
         done();
     };
     CatNetwork.imageSteam.pipe(s);

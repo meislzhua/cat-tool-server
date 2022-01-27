@@ -32,11 +32,7 @@ module.exports = class CatNetwork {
 
         console.log("接受到图片信息:", body.length, CatNetwork.lastImageTime && `帧间隔:${Date.now() - CatNetwork.lastImageTime}`);
         CatNetwork.lastImageTime = Date.now();
-        CatNetwork.imageSteam.push(Buffer.concat([
-            new Buffer(`--${config.BOUNDARY}\r\n`),
-            new Buffer("Content-Type: image/jpeg\r\n\r\n"),
-            body
-        ]));
+        CatNetwork.imageSteam.push(body);
     }
 
     /**
