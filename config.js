@@ -3,6 +3,7 @@ const REGISTER_CATMOVE = 2;
 const REGISTER_CATCAM = 3;
 const REGISTER_DEVICE_ID = 4;
 module.exports = {
+    NAME_CAM: "CAT_TOOL_ESP32_CAM",
     //注册事件编号定义
     REGISTER_CATNETWORK_PING,       //ping事件
     REGISTER_CATMOVE,               //电机马达事件
@@ -17,8 +18,10 @@ module.exports = {
 
 
     rt: {    //实时动态配置
-        MaxCacheFrame: 2,    //网络缓存帧数
+        MaxCacheFrame: 3,    //网络缓存帧数
         format: "avif",    //图片传输格式
+        formatOption: {},
+        isFormat: false,
     }
 
 }

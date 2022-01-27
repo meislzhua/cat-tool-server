@@ -24,20 +24,29 @@ router.get("/img", checkToken, ctx => {
     if (!ctx.checkToken) return;
     let s = new require('stream').Duplex();
     s._read = () => null;
-    s._write = async function (chunk, enc, done) {
-        if (chunk.length * config.rt.MaxCacheFrame > this.readableLength) {
-            const image = sharp(chunk).toFormat(config.rt.format);
-            this.push(Buffer.concat([
-                new Buffer(`--${config.BOUNDARY}\r\nContent-Type: image/${(await image.metadata()).format}\r\n\r\n`),
-                await image.toBuffer()
-            ]))
-        }
+    s._write = function (chunk, enc, done) {
+        if (chunk.length * config.rt.MaxCacheFrame > this.readableLength) this.push(chunk);
         done();
     };
-    CatNetwork.imageSteam.pipe(s);
+    s.on("close", () => {
+        CatNetwork.removeImageStream();
+        console.log("查看撤销!")
+    })
+    CatNetwork.getImageStream().pipe(s);
+
+    console.log("连接设备数:", CatNetwork.streamInfo.deviceCount);
     ctx.status = 200;
     ctx.response.set("content-type", `multipart/x-mixed-replace; boundary="${config.BOUNDARY}"`)
     ctx.body = s;
+})
+
+//请求图片流处理
+router.get("/conf", checkToken, ctx => {
+    if (!ctx.checkToken) return;
+    let {conf} = {...ctx.query, ...ctx.request.body};
+    config.rt = {...config.rt, ...JSON.parse(conf)};
+    ctx.status = 200;
+    ctx.body = config.rt;
 })
 
 //请求命令处理

@@ -1,6 +1,8 @@
 const net = require('net');
 const {Stick, MaxBodyLen} = require('@lvgithub/stick');
 const config = require("../config");
+const sharp = require("sharp");
+const stream = require("stream");
 
 module.exports = class CatNetwork {
     static socketId = 0;
@@ -9,8 +11,49 @@ module.exports = class CatNetwork {
 
     static socketMap = new Map();
     static targetMap = {};
+    static streamInfo = {
+        deviceCount: 0,
+        isCoding: false,
+    }
+    static imageSteam = new require('stream').Duplex({
+        read() {
+        },
+        write(chunk, enc, done) {
+            if (!config.rt.isFormat) {
+                this.push(Buffer.concat([
+                    new Buffer(`--${config.BOUNDARY}\r\nContent-Type: image/jpeg\r\n\r\n`),
+                    chunk
+                ]));
+                done();
+                return;
+            }
 
-    static imageSteam = new require('stream').Duplex();
+            if (CatNetwork.streamInfo.deviceCount) {
+                if (CatNetwork.streamInfo.isCoding) {
+                    CatNetwork.streamInfo.next = chunk;
+                    console.log("正在coding,放入next:");
+                    return done?.();
+                }
+                CatNetwork.streamInfo.isCoding = true;
+                CatNetwork.streamInfo.next = null;
+                (async () => {
+                    let start = Date.now();
+                    const image = sharp(chunk).toFormat(config.rt.format, config.rt.formatOption);
+                    let data = Buffer.concat([
+                        new Buffer(`--${config.BOUNDARY}\r\nContent-Type: image/${(await image.metadata()).format}\r\n\r\n`),
+                        await image.toBuffer()
+                    ])
+                    this.push(data)
+                    CatNetwork.streamInfo.isCoding = false;
+                    console.log("转化耗时:", Date.now() - start, "长度:", data.length);
+                    if (CatNetwork.streamInfo.next) this.write(this.next);
+                })().catch(() => CatNetwork.streamInfo.isCoding = false);
+            }
+
+            done?.();
+        }
+    });
+
     static lastImageTime = null;
 
     /**
@@ -32,7 +75,7 @@ module.exports = class CatNetwork {
 
         console.log("接受到图片信息:", body.length, CatNetwork.lastImageTime && `帧间隔:${Date.now() - CatNetwork.lastImageTime}`);
         CatNetwork.lastImageTime = Date.now();
-        CatNetwork.imageSteam.push(body);
+        CatNetwork.imageSteam.write(body);
     }
 
     /**
@@ -46,6 +89,7 @@ module.exports = class CatNetwork {
      * 发送JSON信息
      */
     static sendJson(socket, data) {
+
         CatNetwork.send(socket, JSON.stringify(data))
     }
 
@@ -57,6 +101,26 @@ module.exports = class CatNetwork {
         if (sData.name) delete CatNetwork.targetMap[sData.name];
         sData.socket.destroy();
         CatNetwork.socketMap.delete(sData.socket);
+    }
+
+
+    static getImageStream() {
+        if (!CatNetwork.streamInfo.deviceCount) {
+            const socket = CatNetwork.targetMap[config.NAME_CAM]?.socket;
+            socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 1});
+        }
+        CatNetwork.streamInfo.deviceCount++;
+
+        return CatNetwork.imageSteam;
+    }
+
+    static removeImageStream(stream) {
+        CatNetwork.streamInfo.deviceCount--;
+
+        if (!CatNetwork.streamInfo.deviceCount) {
+            const socket = CatNetwork.targetMap[config.NAME_CAM]?.socket;
+            socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 0});
+        }
     }
 
     static init() {
@@ -84,12 +148,13 @@ module.exports = class CatNetwork {
             })
 
             CatNetwork.socketMap.set(socket, sData);
-        });
+            CatNetwork.imageSteam.pipe(new stream.Writable({
+                write(chunk, encoding, callback) {
+                    callback?.();
+                }
+            }))
 
-        //建立图片流的处理
-        CatNetwork.imageSteam._read = () => null;
-        CatNetwork.imageSteam._write = (chunk, enc, done) => done();
-        CatNetwork.imageSteam.pipe(CatNetwork.imageSteam);
+        });
 
         CatNetwork.server.listen(8431, '0.0.0.0', () => console.log("服务器监听开始"));
     }
