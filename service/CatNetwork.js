@@ -105,11 +105,14 @@ module.exports = class CatNetwork {
 
 
     static getImageStream() {
-        if (!CatNetwork.streamInfo.deviceCount) {
-            const socket = CatNetwork.targetMap[config.NAME_CAM]?.socket;
-            socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 1});
-        }
         CatNetwork.streamInfo.deviceCount++;
+
+        if (CatNetwork.streamInfo.deviceCount) {
+            CatNetwork.socketMap.forEach(({socket}) => {
+                socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 1});
+            })
+            console.log("自动打开摄像头！");
+        }
 
         return CatNetwork.imageSteam;
     }
@@ -118,8 +121,10 @@ module.exports = class CatNetwork {
         CatNetwork.streamInfo.deviceCount--;
 
         if (!CatNetwork.streamInfo.deviceCount) {
-            const socket = CatNetwork.targetMap[config.NAME_CAM]?.socket;
-            socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 0});
+            CatNetwork.socketMap.forEach(({socket}) => {
+                socket && CatNetwork.sendJson(socket, {c: config.REGISTER_CATCAM, o: 0});
+            })
+            console.log("自动关闭摄像头！");
         }
     }
 
@@ -148,14 +153,14 @@ module.exports = class CatNetwork {
             })
 
             CatNetwork.socketMap.set(socket, sData);
-            CatNetwork.imageSteam.pipe(new stream.Writable({
-                write(chunk, encoding, callback) {
-                    callback?.();
-                }
-            }))
+
 
         });
-
+        CatNetwork.imageSteam.pipe(new stream.Writable({
+            write(chunk, encoding, callback) {
+                callback?.();
+            }
+        }))
         CatNetwork.server.listen(8431, '0.0.0.0', () => console.log("服务器监听开始"));
     }
 
