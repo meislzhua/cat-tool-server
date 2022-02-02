@@ -68,7 +68,7 @@ router.get("/pic", checkToken, async ctx => {
     console.log("连接设备数:", CatNetwork.streamInfo.deviceCount);
     ctx.status = 200;
     ctx.response.set("content-type", `multipart/x-mixed-replace; boundary="${config.BOUNDARY}"`)
-    ctx.body = await img;
+    ctx.body = s;
 })
 
 
