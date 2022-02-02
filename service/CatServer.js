@@ -40,7 +40,39 @@ router.get("/img", checkToken, ctx => {
     ctx.body = s;
 })
 
-//请求图片流处理
+
+router.get("/pic", checkToken, async ctx => {
+
+
+    if (!ctx.checkToken) return;
+    let s = new require('stream').Duplex();
+    let onSuccess = null;
+    let img = new Promise(resolve => onSuccess = resolve);
+
+    s._read = () => null;
+    s._write = function (chunk, enc, done) {
+
+        if (chunk.length * config.rt.MaxCacheFrame > this.readableLength) this.push(chunk);
+        done();
+        onSuccess(chunk);
+        s.destroy();
+
+
+    };
+    s.on("close", () => {
+        CatNetwork.removeImageStream();
+        console.log("查看撤销!")
+    })
+    CatNetwork.getImageStream().pipe(s);
+
+    console.log("连接设备数:", CatNetwork.streamInfo.deviceCount);
+    ctx.status = 200;
+    ctx.response.set("content-type", `multipart/x-mixed-replace; boundary="${config.BOUNDARY}"`)
+    ctx.body = await img;
+})
+
+
+//设置
 router.get("/conf", checkToken, ctx => {
     if (!ctx.checkToken) return;
     let {conf} = {...ctx.query, ...ctx.request.body};
